@@ -5,10 +5,13 @@ import { formatDateTime } from "@/lib/types";
 export const dynamic = "force-dynamic";
 
 export default async function ExercisesPage() {
-  const { data: rows } = await supabase
+  const { data: rows, error } = await supabase
     .from("exercise_list_view")
     .select("id, title, source_type, pr_url, created_at, submission_count, model_comment_count")
     .order("created_at", { ascending: false });
+  if (error) {
+    throw new Error(`演習一覧の取得に失敗しました: ${error.message}`);
+  }
 
   const exercises = rows ?? [];
 
@@ -33,9 +36,9 @@ export default async function ExercisesPage() {
         </div>
       ) : (
         <ul className="space-y-3">
-          {exercises.map((e) => (
+          {exercises.map((e, idx) => (
             <li
-              key={e.id}
+              key={e.id ?? `exercise-${idx}`}
               className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white p-4 sm:gap-4"
             >
               <div className="min-w-0">

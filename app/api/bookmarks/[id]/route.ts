@@ -1,12 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
+import { parseId } from "@/lib/types";
 
 export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const bookmarkId = Number(id);
+  const bookmarkId = parseId(id);
+  if (bookmarkId === null) {
+    return NextResponse.json({ error: "IDが不正です" }, { status: 400 });
+  }
   const body = await req.json();
 
   if (typeof body.is_read === "boolean") {
@@ -50,7 +54,11 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const { error } = await supabase.from("bookmarks").delete().eq("id", Number(id));
+  const bookmarkId = parseId(id);
+  if (bookmarkId === null) {
+    return NextResponse.json({ error: "IDが不正です" }, { status: 400 });
+  }
+  const { error } = await supabase.from("bookmarks").delete().eq("id", bookmarkId);
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }

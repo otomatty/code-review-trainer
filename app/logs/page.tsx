@@ -20,7 +20,7 @@ function buildMonth(year: number, month: number, studied: Set<string>) {
 }
 
 export default async function LogsPage() {
-  const [streak, studiedList, { data: logRows }] = await Promise.all([
+  const [streak, studiedList, { data: logRows, error }] = await Promise.all([
     calcStreak(),
     studiedDates(),
     supabase
@@ -30,6 +30,9 @@ export default async function LogsPage() {
       .order("id", { ascending: false })
       .limit(100),
   ]);
+  if (error) {
+    throw new Error(`学習ログの取得に失敗しました: ${error.message}`);
+  }
   const studied = new Set(studiedList);
   const logs = logRows ?? [];
 

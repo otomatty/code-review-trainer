@@ -1,18 +1,25 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
+import { parseId } from "@/lib/types";
 
 export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const submissionId = Number(id);
+  const submissionId = parseId(id);
+  if (submissionId === null) {
+    return NextResponse.json({ error: "IDが不正です" }, { status: 400 });
+  }
 
-  const { data: submission } = await supabase
+  const { data: submission, error: submissionError } = await supabase
     .from("review_submissions")
     .select("*")
     .eq("id", submissionId)
     .maybeSingle();
+  if (submissionError) {
+    return NextResponse.json({ error: submissionError.message }, { status: 500 });
+  }
   if (!submission) {
     return NextResponse.json({ error: "提出が見つかりません" }, { status: 404 });
   }

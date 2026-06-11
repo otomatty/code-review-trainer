@@ -8,11 +8,11 @@ export const dynamic = "force-dynamic";
 export default async function DashboardPage() {
   const [
     streak,
-    { count: totalSubmissions },
-    { count: totalExercises },
-    { data: weekly },
-    { data: recent },
-    { data: feedbackRows },
+    { count: totalSubmissions, error: submissionsError },
+    { count: totalExercises, error: exercisesError },
+    { data: weekly, error: weeklyError },
+    { data: recent, error: recentError },
+    { data: feedbackRows, error: feedbackError },
   ] = await Promise.all([
     calcStreak(),
     supabase.from("review_submissions").select("*", { count: "exact", head: true }),
@@ -26,15 +26,29 @@ export default async function DashboardPage() {
     supabase.from("ai_feedback").select("scores_by_category"),
   ]);
 
+  const dashboardError =
+    submissionsError ?? exercisesError ?? weeklyError ?? recentError ?? feedbackError;
+  if (dashboardError) {
+    throw new Error(`ダッシュボードの取得に失敗しました: ${dashboardError.message}`);
+  }
+
   const thisWeek = weekly?.days ?? 0;
   const recentList = recent ?? [];
 
   // 弱点サマリ: AIフィードバックの観点別平均スコア (F-08 簡易版)
+  // jsonb は型保証がないため、各要素の構造を実行時に検証してから集計する。
+  const isAiScore = (v: unknown): v is AiScore =>
+    typeof v === "object" &&
+    v !== null &&
+    typeof (v as AiScore).category === "string" &&
+    typeof (v as AiScore).score === "number";
+
   const categoryScores = new Map<string, number[]>();
   for (const row of feedbackRows ?? []) {
-    const scores = row.scores_by_category as AiScore[] | null;
+    const scores = row.scores_by_category;
     if (!Array.isArray(scores)) continue;
     for (const s of scores) {
+      if (!isAiScore(s)) continue;
       if (!categoryScores.has(s.category)) categoryScores.set(s.category, []);
       categoryScores.get(s.category)!.push(s.score);
     }
