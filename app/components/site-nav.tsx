@@ -12,7 +12,9 @@ const NAV_ITEMS = [
 ];
 
 function isActive(pathname: string, href: string) {
-  return href === "/" ? pathname === "/" : pathname.startsWith(href);
+  return href === "/"
+    ? pathname === "/"
+    : pathname === href || pathname.startsWith(href + "/");
 }
 
 export function SidebarNav() {
@@ -23,6 +25,7 @@ export function SidebarNav() {
         <Link
           key={item.href}
           href={item.href}
+          aria-current={isActive(pathname, item.href) ? "page" : undefined}
           className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium ${
             isActive(pathname, item.href)
               ? "bg-blue-50 text-blue-700"
@@ -41,11 +44,13 @@ export function MobileBottomNav() {
   const pathname = usePathname();
   return (
     <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white pb-[env(safe-area-inset-bottom)] md:hidden">
+      {/* grid-cols-5 は NAV_ITEMS の項目数と一致させること */}
       <div className="grid grid-cols-5">
         {NAV_ITEMS.map((item) => (
           <Link
             key={item.href}
             href={item.href}
+            aria-current={isActive(pathname, item.href) ? "page" : undefined}
             className={`flex flex-col items-center gap-0.5 py-2 text-[10px] font-medium ${
               isActive(pathname, item.href) ? "text-blue-600" : "text-slate-500"
             }`}

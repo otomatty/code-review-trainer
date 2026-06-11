@@ -45,6 +45,23 @@ export default function ReviewExercisePage({
     return () => clearInterval(t);
   }, []);
 
+  // ドロワー/モーダル表示中は背景スクロールをロックし、Escapeで閉じる
+  useEffect(() => {
+    if (!showChecklist && !showSubmit) return;
+    document.body.style.overflow = "hidden";
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setShowChecklist(false);
+        setShowSubmit(false);
+      }
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.body.style.overflow = "";
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [showChecklist, showSubmit]);
+
   useEffect(() => {
     Promise.all([
       fetch(`/api/exercises/${id}`).then((r) => r.json()),
@@ -239,9 +256,16 @@ export default function ReviewExercisePage({
             className="absolute inset-0 bg-black/40"
             onClick={() => setShowChecklist(false)}
           />
-          <div className="absolute inset-y-0 right-0 w-80 max-w-[85vw] overflow-y-auto bg-white p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] shadow-xl">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="checklist-drawer-title"
+            className="absolute inset-y-0 right-0 w-80 max-w-[85vw] overflow-y-auto bg-white p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] shadow-xl"
+          >
             <div className="mb-2 flex items-center justify-between">
-              <h2 className="text-sm font-bold">観点チェックリスト</h2>
+              <h2 id="checklist-drawer-title" className="text-sm font-bold">
+                観点チェックリスト
+              </h2>
               <button
                 onClick={() => setShowChecklist(false)}
                 className="rounded-lg px-2 py-1 text-sm text-slate-500 hover:bg-slate-100"
@@ -264,8 +288,15 @@ export default function ReviewExercisePage({
       {/* 提出モーダル */}
       {showSubmit && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="max-h-[85vh] w-full max-w-md overflow-y-auto rounded-xl bg-white p-5 shadow-xl sm:p-6">
-            <h2 className="text-lg font-bold">レビューを提出</h2>
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="submit-modal-title"
+            className="max-h-[85vh] w-full max-w-md overflow-y-auto rounded-xl bg-white p-5 shadow-xl sm:p-6"
+          >
+            <h2 id="submit-modal-title" className="text-lg font-bold">
+              レビューを提出
+            </h2>
             <p className="mt-1 text-sm text-slate-500">
               指摘 {comments.length}件 ・ 所要 約{Math.max(1, elapsed)}分
             </p>

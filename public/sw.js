@@ -28,6 +28,8 @@ self.addEventListener("activate", (event) => {
       .then((keys) =>
         Promise.all(
           keys
+            // 自前のキャッシュ (static-*/pages-*) の旧バージョンのみ削除する
+            .filter((key) => key.startsWith("static-") || key.startsWith("pages-"))
             .filter((key) => key !== STATIC_CACHE && key !== PAGE_CACHE)
             .map((key) => caches.delete(key))
         )
@@ -53,7 +55,9 @@ self.addEventListener("fetch", (event) => {
         .then((response) => {
           if (response.ok) {
             const copy = response.clone();
-            caches.open(PAGE_CACHE).then((cache) => cache.put(request, copy));
+            event.waitUntil(
+              caches.open(PAGE_CACHE).then((cache) => cache.put(request, copy))
+            );
           }
           return response;
         })
@@ -75,7 +79,9 @@ self.addEventListener("fetch", (event) => {
           fetch(request).then((response) => {
             if (response.ok) {
               const copy = response.clone();
-              caches.open(STATIC_CACHE).then((cache) => cache.put(request, copy));
+              event.waitUntil(
+                caches.open(STATIC_CACHE).then((cache) => cache.put(request, copy))
+              );
             }
             return response;
           })
@@ -90,7 +96,9 @@ self.addEventListener("fetch", (event) => {
       .then((response) => {
         if (response.ok) {
           const copy = response.clone();
-          caches.open(STATIC_CACHE).then((cache) => cache.put(request, copy));
+          event.waitUntil(
+            caches.open(STATIC_CACHE).then((cache) => cache.put(request, copy))
+          );
         }
         return response;
       })
