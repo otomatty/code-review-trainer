@@ -70,7 +70,7 @@ export default function DashboardPage() {
 
   return (
     <div className="mx-auto max-w-5xl space-y-8">
-      <header className="flex items-center justify-between">
+      <header className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-bold">ダッシュボード</h1>
         <Link
           href="/exercises"
@@ -80,7 +80,7 @@ export default function DashboardPage() {
         </Link>
       </header>
 
-      <section className="grid grid-cols-2 gap-4 md:grid-cols-4">
+      <section className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-4">
         <StatCard label="🔥 ストリーク" value={`${streak}日`} highlight={streak >= 3} />
         <StatCard label="今週の学習日数" value={`${thisWeek} / 7日`} highlight={thisWeek >= 3} />
         <StatCard label="演習提出回数" value={`${totalSubmissions}回`} />
@@ -128,7 +128,9 @@ export default function DashboardPage() {
             <ul className="space-y-2.5">
               {weakness.map((w) => (
                 <li key={w.key} className="flex items-center gap-3">
-                  <span className="w-36 shrink-0 text-sm">{categoryLabel(w.key)}</span>
+                  <span className="w-24 shrink-0 text-xs sm:w-36 sm:text-sm">
+                    {categoryLabel(w.key)}
+                  </span>
                   <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-slate-100">
                     {w.avg != null && (
                       <div

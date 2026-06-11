@@ -127,7 +127,7 @@ export default function ResultsPage({
 
       {/* 行単位の対比 (US-05) */}
       <section className="overflow-hidden rounded-xl border border-slate-200 bg-white">
-        <div className="grid grid-cols-2 border-b border-slate-200 bg-slate-50 text-sm font-semibold">
+        <div className="hidden grid-cols-2 border-b border-slate-200 bg-slate-50 text-sm font-semibold sm:grid">
           <div className="px-4 py-2.5">
             あなたの指摘 <span className="font-normal text-slate-500">({comments.length}件)</span>
           </div>
@@ -135,6 +135,9 @@ export default function ResultsPage({
             模範レビュー{" "}
             <span className="font-normal text-slate-500">({modelComments.length}件)</span>
           </div>
+        </div>
+        <div className="border-b border-slate-200 bg-slate-50 px-4 py-2.5 text-sm font-semibold sm:hidden">
+          あなたの指摘 ({comments.length}件) と模範レビュー ({modelComments.length}件)
         </div>
         {sortedKeys.length === 0 ? (
           <div className="p-6 text-sm text-slate-500">
@@ -153,8 +156,11 @@ export default function ResultsPage({
                 <div className="bg-slate-50/60 px-4 py-1.5 font-mono text-xs text-slate-500">
                   {key}
                 </div>
-                <div className="grid grid-cols-2">
+                <div className="grid sm:grid-cols-2">
                   <div className="space-y-2 p-4">
+                    <div className="text-xs font-semibold text-slate-500 sm:hidden">
+                      あなたの指摘
+                    </div>
                     {own.length === 0 ? (
                       <p className="text-xs text-red-400">指摘なし (見逃し?)</p>
                     ) : (
@@ -170,7 +176,10 @@ export default function ResultsPage({
                       ))
                     )}
                   </div>
-                  <div className="space-y-2 border-l border-slate-100 p-4">
+                  <div className="space-y-2 border-t border-slate-100 p-4 sm:border-t-0 sm:border-l">
+                    <div className="text-xs font-semibold text-slate-500 sm:hidden">
+                      模範レビュー
+                    </div>
                     {model.length === 0 ? (
                       <p className="text-xs text-slate-400">—</p>
                     ) : (
@@ -192,8 +201,8 @@ export default function ResultsPage({
       </section>
 
       {/* AIフィードバック (US-07) */}
-      <section className="rounded-xl border border-slate-200 bg-white p-5">
-        <div className="flex items-center justify-between">
+      <section className="rounded-xl border border-slate-200 bg-white p-4 sm:p-5">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <h2 className="font-bold">🤖 AIフィードバック</h2>
           <button
             onClick={requestAiFeedback}

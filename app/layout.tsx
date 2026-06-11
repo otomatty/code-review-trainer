@@ -1,19 +1,29 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import Link from "next/link";
+import { MobileBottomNav, SidebarNav } from "./components/site-nav";
+import { ServiceWorkerRegister } from "./components/sw-register";
 import "./globals.css";
 
 export const metadata: Metadata = {
   title: "コードレビュー・トレーナー",
   description: "コードレビュー能力を鍛えるための個人用トレーニングアプリ",
+  applicationName: "コードレビュー・トレーナー",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "CR Trainer",
+  },
+  icons: {
+    apple: "/icons/apple-touch-icon.png",
+  },
 };
 
-const NAV_ITEMS = [
-  { href: "/", label: "ダッシュボード", icon: "📊" },
-  { href: "/exercises", label: "演習一覧", icon: "📝" },
-  { href: "/logs", label: "学習ログ", icon: "📅" },
-  { href: "/bookmarks", label: "PRブックマーク", icon: "🔖" },
-  { href: "/settings", label: "設定", icon: "⚙️" },
-];
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: "#ffffff",
+};
 
 export default function RootLayout({
   children,
@@ -22,7 +32,7 @@ export default function RootLayout({
     <html lang="ja">
       <body>
         <div className="flex min-h-screen">
-          <aside className="w-56 shrink-0 border-r border-slate-200 bg-white">
+          <aside className="hidden w-56 shrink-0 border-r border-slate-200 bg-white md:block">
             <div className="sticky top-0 p-4">
               <Link href="/" className="block px-2 py-3">
                 <span className="text-lg font-bold tracking-tight">
@@ -31,22 +41,22 @@ export default function RootLayout({
                   Trainer
                 </span>
               </Link>
-              <nav className="mt-2 space-y-1">
-                {NAV_ITEMS.map((item) => (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
-                  >
-                    <span>{item.icon}</span>
-                    {item.label}
-                  </Link>
-                ))}
-              </nav>
+              <SidebarNav />
             </div>
           </aside>
-          <main className="min-w-0 flex-1 p-6 lg:p-8">{children}</main>
+          <div className="min-w-0 flex-1">
+            <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/90 px-4 pt-[calc(0.75rem+env(safe-area-inset-top))] pb-3 backdrop-blur md:hidden">
+              <Link href="/" className="text-base font-bold tracking-tight">
+                Code Review Trainer
+              </Link>
+            </header>
+            <main className="min-w-0 p-4 pb-24 md:p-6 md:pb-8 lg:p-8">
+              {children}
+            </main>
+          </div>
         </div>
+        <MobileBottomNav />
+        <ServiceWorkerRegister />
       </body>
     </html>
   );

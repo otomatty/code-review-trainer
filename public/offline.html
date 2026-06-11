@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>オフライン | コードレビュー・トレーナー</title>
+    <style>
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #f8fafc;
+        color: #0f172a;
+        font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+        text-align: center;
+        padding: 1.5rem;
+      }
+      .card {
+        max-width: 24rem;
+      }
+      .icon {
+        font-size: 3rem;
+      }
+      h1 {
+        font-size: 1.25rem;
+        margin: 0.75rem 0 0.5rem;
+      }
+      p {
+        font-size: 0.875rem;
+        color: #64748b;
+        line-height: 1.6;
+        margin: 0 0 1.25rem;
+      }
+      button {
+        background: #2563eb;
+        color: #fff;
+        border: none;
+        border-radius: 0.5rem;
+        padding: 0.625rem 1.5rem;
+        font-size: 0.875rem;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      button:hover {
+        background: #1d4ed8;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <div class="icon">📡</div>
+      <h1>オフラインです</h1>
+      <p>
+        ネットワークに接続できません。このアプリはローカルサーバーで動作するため、サーバーが起動しているか・接続が回復しているかを確認してください。
+      </p>
+      <button type="button" onclick="location.reload()">再読み込み</button>
+    </div>
+  </body>
+</html>
