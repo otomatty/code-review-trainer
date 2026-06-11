@@ -51,7 +51,7 @@ export default function NewExercisePage() {
         </TabButton>
       </div>
 
-      <div className="rounded-xl border border-slate-200 bg-white p-6">
+      <div className="rounded-xl border border-slate-200 bg-white p-4 sm:p-6">
         {tab === "github_pr" ? (
           <div className="space-y-4">
             <Field label="PR URL *">
@@ -132,7 +132,7 @@ function TabButton({
   return (
     <button
       onClick={onClick}
-      className={`rounded-lg px-4 py-2 text-sm font-medium ${
+      className={`flex-1 rounded-lg px-4 py-2 text-sm font-medium sm:flex-none ${
         active
           ? "bg-blue-600 text-white"
           : "border border-slate-300 bg-white text-slate-600 hover:bg-slate-50"

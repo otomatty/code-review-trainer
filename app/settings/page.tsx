@@ -84,7 +84,7 @@ export default function SettingsPage() {
     <div className="mx-auto max-w-3xl space-y-8">
       <h1 className="text-2xl font-bold">設定</h1>
 
-      <section className="rounded-xl border border-slate-200 bg-white p-6">
+      <section className="rounded-xl border border-slate-200 bg-white p-4 sm:p-6">
         <h2 className="font-semibold">APIトークン</h2>
         <p className="mt-1 text-xs text-slate-500">
           トークンはローカルのSQLiteに保存されます。環境変数 (GITHUB_TOKEN / ANTHROPIC_API_KEY) でも設定できます。
@@ -121,7 +121,7 @@ export default function SettingsPage() {
         </div>
       </section>
 
-      <section className="rounded-xl border border-slate-200 bg-white p-6">
+      <section className="rounded-xl border border-slate-200 bg-white p-4 sm:p-6">
         <h2 className="font-semibold">観点チェックリストの編集</h2>
         <p className="mt-1 text-xs text-slate-500">
           無効化した項目は演習画面に表示されません。自分の学習方針に合わせて追加・整理しましょう。
@@ -159,7 +159,7 @@ export default function SettingsPage() {
           ))}
         </div>
 
-        <div className="mt-6 flex gap-2 border-t border-slate-100 pt-4">
+        <div className="mt-6 flex flex-col gap-2 border-t border-slate-100 pt-4 sm:flex-row">
           <select
             value={newCategory}
             onChange={(e) => setNewCategory(e.target.value)}

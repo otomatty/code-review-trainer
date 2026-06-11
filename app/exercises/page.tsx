@@ -27,7 +27,7 @@ export default function ExercisesPage() {
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">
-      <header className="flex items-center justify-between">
+      <header className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-bold">演習一覧</h1>
         <Link
           href="/exercises/new"
@@ -49,7 +49,7 @@ export default function ExercisesPage() {
           {rows.map((e) => (
             <li
               key={e.id}
-              className="flex items-center justify-between gap-4 rounded-xl border border-slate-200 bg-white p-4"
+              className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white p-4 sm:gap-4"
             >
               <div className="min-w-0">
                 <Link

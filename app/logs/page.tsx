@@ -57,14 +57,14 @@ export default function LogsPage() {
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">
-      <header className="flex items-center justify-between">
+      <header className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-bold">学習ログ</h1>
         <div className="rounded-lg bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-700">
           🔥 ストリーク {streak}日
         </div>
       </header>
 
-      <section className="grid gap-4 md:grid-cols-3">
+      <section className="grid gap-4 sm:grid-cols-2 md:grid-cols-3">
         {months.map(({ year, month }) => {
           const cells = buildMonth(year, month, studied);
           return (
@@ -109,8 +109,8 @@ export default function LogsPage() {
         ) : (
           <ul className="divide-y divide-slate-100">
             {logs.map((log) => (
-              <li key={log.id} className="flex items-center gap-4 px-5 py-3">
-                <span className="w-24 shrink-0 text-sm tabular-nums text-slate-500">
+              <li key={log.id} className="flex items-center gap-3 px-4 py-3 sm:gap-4 sm:px-5">
+                <span className="w-20 shrink-0 text-xs tabular-nums text-slate-500 sm:w-24 sm:text-sm">
                   {log.studied_on}
                 </span>
                 <div className="min-w-0 flex-1">

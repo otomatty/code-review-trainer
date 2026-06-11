@@ -30,6 +30,7 @@ export default function ReviewExercisePage({
   const [checked, setChecked] = useState<Set<number>>(new Set());
 
   const [showSubmit, setShowSubmit] = useState(false);
+  const [showChecklist, setShowChecklist] = useState(false);
   const [selfScore, setSelfScore] = useState(3);
   const [memo, setMemo] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -73,6 +74,15 @@ export default function ReviewExercisePage({
     }
     return map;
   }, [checklist]);
+
+  function toggleChecked(itemId: number) {
+    setChecked((prev) => {
+      const next = new Set(prev);
+      if (next.has(itemId)) next.delete(itemId);
+      else next.add(itemId);
+      return next;
+    });
+  }
 
   function addComment(file: string, line: number, body: string, checklistItemId: number | null) {
     setComments((prev) => [
@@ -150,13 +160,19 @@ export default function ReviewExercisePage({
             )}
           </div>
         </div>
-        <div className="flex items-center gap-3 text-sm">
+        <div className="flex flex-wrap items-center gap-2 text-sm sm:gap-3">
           <span className="rounded-lg bg-slate-100 px-3 py-1.5 tabular-nums">
             ⏱ {elapsed}分経過
           </span>
           <span className="rounded-lg bg-blue-50 px-3 py-1.5 font-medium text-blue-700 tabular-nums">
             💬 指摘 {comments.length}件
           </span>
+          <button
+            onClick={() => setShowChecklist(true)}
+            className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 font-medium text-slate-600 hover:bg-slate-50 lg:hidden"
+          >
+            ✓ チェックリスト
+          </button>
           <button
             onClick={() => setShowSubmit(true)}
             className="rounded-lg bg-emerald-600 px-4 py-2 font-semibold text-white hover:bg-emerald-700"
@@ -198,7 +214,7 @@ export default function ReviewExercisePage({
           )}
         </div>
 
-        {/* 観点チェックリスト (US-04: 常時表示) */}
+        {/* 観点チェックリスト (US-04: デスクトップでは常時表示) */}
         <aside className="hidden w-72 shrink-0 lg:block">
           <div className="sticky top-4 max-h-[calc(100vh-2rem)] space-y-4 overflow-y-auto">
             <div className="rounded-xl border border-slate-200 bg-white p-4">
@@ -206,50 +222,49 @@ export default function ReviewExercisePage({
               <p className="mb-3 text-xs text-slate-500">
                 確認した観点にチェックを入れて抜け漏れを防ぎましょう。
               </p>
-              {[...checklistByCategory.entries()].map(([category, items]) => (
-                <div key={category} className="mb-3">
-                  <div className="mb-1 text-xs font-semibold text-slate-600">
-                    {categoryLabel(category)}
-                  </div>
-                  <ul className="space-y-1">
-                    {items.map((item) => (
-                      <li key={item.id}>
-                        <label className="flex cursor-pointer items-start gap-2 rounded px-1 py-0.5 text-xs hover:bg-slate-50">
-                          <input
-                            type="checkbox"
-                            checked={checked.has(item.id)}
-                            onChange={() =>
-                              setChecked((prev) => {
-                                const next = new Set(prev);
-                                if (next.has(item.id)) next.delete(item.id);
-                                else next.add(item.id);
-                                return next;
-                              })
-                            }
-                            className="mt-0.5"
-                          />
-                          <span
-                            className={
-                              checked.has(item.id) ? "text-slate-400 line-through" : ""
-                            }
-                          >
-                            {item.label}
-                          </span>
-                        </label>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ))}
+              <ChecklistPanel
+                checklistByCategory={checklistByCategory}
+                checked={checked}
+                onToggle={toggleChecked}
+              />
             </div>
           </div>
         </aside>
       </div>
 
+      {/* 観点チェックリスト ドロワー (モバイル/タブレット) */}
+      {showChecklist && (
+        <div className="fixed inset-0 z-50 lg:hidden">
+          <div
+            className="absolute inset-0 bg-black/40"
+            onClick={() => setShowChecklist(false)}
+          />
+          <div className="absolute inset-y-0 right-0 w-80 max-w-[85vw] overflow-y-auto bg-white p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] shadow-xl">
+            <div className="mb-2 flex items-center justify-between">
+              <h2 className="text-sm font-bold">観点チェックリスト</h2>
+              <button
+                onClick={() => setShowChecklist(false)}
+                className="rounded-lg px-2 py-1 text-sm text-slate-500 hover:bg-slate-100"
+              >
+                ✕ 閉じる
+              </button>
+            </div>
+            <p className="mb-3 text-xs text-slate-500">
+              確認した観点にチェックを入れて抜け漏れを防ぎましょう。
+            </p>
+            <ChecklistPanel
+              checklistByCategory={checklistByCategory}
+              checked={checked}
+              onToggle={toggleChecked}
+            />
+          </div>
+        </div>
+      )}
+
       {/* 提出モーダル */}
       {showSubmit && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
+          <div className="max-h-[85vh] w-full max-w-md overflow-y-auto rounded-xl bg-white p-5 shadow-xl sm:p-6">
             <h2 className="text-lg font-bold">レビューを提出</h2>
             <p className="mt-1 text-sm text-slate-500">
               指摘 {comments.length}件 ・ 所要 約{Math.max(1, elapsed)}分
@@ -308,6 +323,47 @@ export default function ReviewExercisePage({
         </div>
       )}
     </div>
+  );
+}
+
+function ChecklistPanel({
+  checklistByCategory,
+  checked,
+  onToggle,
+}: {
+  checklistByCategory: Map<string, ChecklistItem[]>;
+  checked: Set<number>;
+  onToggle: (itemId: number) => void;
+}) {
+  return (
+    <>
+      {[...checklistByCategory.entries()].map(([category, items]) => (
+        <div key={category} className="mb-3">
+          <div className="mb-1 text-xs font-semibold text-slate-600">
+            {categoryLabel(category)}
+          </div>
+          <ul className="space-y-1">
+            {items.map((item) => (
+              <li key={item.id}>
+                <label className="flex cursor-pointer items-start gap-2 rounded px-1 py-1 text-xs hover:bg-slate-50">
+                  <input
+                    type="checkbox"
+                    checked={checked.has(item.id)}
+                    onChange={() => onToggle(item.id)}
+                    className="mt-0.5"
+                  />
+                  <span
+                    className={checked.has(item.id) ? "text-slate-400 line-through" : ""}
+                  >
+                    {item.label}
+                  </span>
+                </label>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ))}
+    </>
   );
 }
 
@@ -422,10 +478,10 @@ function DiffLineRow({
         onClick={() => line.commentLineNo != null && onLineClick(line.commentLineNo)}
         title="クリックしてコメント"
       >
-        <td className="w-12 border-r border-slate-100 px-2 text-right text-slate-400 select-none">
+        <td className="hidden w-12 border-r border-slate-100 px-2 text-right text-slate-400 select-none sm:table-cell">
           {line.oldLineNo ?? ""}
         </td>
-        <td className="w-12 border-r border-slate-100 px-2 text-right text-slate-400 select-none">
+        <td className="w-10 border-r border-slate-100 px-1.5 text-right text-slate-400 select-none sm:w-12 sm:px-2">
           {line.newLineNo ?? ""}
         </td>
         <td className="px-3 whitespace-pre-wrap break-all">
@@ -518,7 +574,7 @@ function CommentForm({
         <select
           value={itemId}
           onChange={(e) => setItemId(e.target.value)}
-          className="rounded-lg border border-slate-300 px-2 py-1.5 text-xs focus:border-blue-500 focus:outline-none"
+          className="max-w-full rounded-lg border border-slate-300 px-2 py-1.5 text-xs focus:border-blue-500 focus:outline-none"
         >
           <option value="">観点タグを選択 (任意)</option>
           {[...checklistByCategory.entries()].map(([category, items]) => (
