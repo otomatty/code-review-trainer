@@ -1,29 +1,19 @@
 import Link from "next/link";
-import { getDb } from "@/lib/db";
+import { supabase } from "@/lib/supabase";
+import { formatDateTime } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
-interface ExerciseRow {
-  id: number;
-  title: string;
-  source_type: string;
-  pr_url: string | null;
-  created_at: string;
-  submission_count: number;
-  model_comment_count: number;
-}
+export default async function ExercisesPage() {
+  const { data: rows, error } = await supabase
+    .from("exercise_list_view")
+    .select("id, title, source_type, pr_url, created_at, submission_count, model_comment_count")
+    .order("created_at", { ascending: false });
+  if (error) {
+    throw new Error(`演習一覧の取得に失敗しました: ${error.message}`);
+  }
 
-export default function ExercisesPage() {
-  const db = getDb();
-  const rows = db
-    .prepare(
-      `SELECT e.id, e.title, e.source_type, e.pr_url, e.created_at,
-              (SELECT COUNT(*) FROM review_submissions s WHERE s.exercise_id = e.id) AS submission_count,
-              (SELECT COUNT(*) FROM model_review_comments m WHERE m.exercise_id = e.id) AS model_comment_count
-       FROM exercises e
-       ORDER BY e.created_at DESC`
-    )
-    .all() as ExerciseRow[];
+  const exercises = rows ?? [];
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">
@@ -37,7 +27,7 @@ export default function ExercisesPage() {
         </Link>
       </header>
 
-      {rows.length === 0 ? (
+      {exercises.length === 0 ? (
         <div className="rounded-xl border border-dashed border-slate-300 bg-white p-10 text-center text-slate-500">
           <p className="mb-3">題材がまだ登録されていません。</p>
           <p className="text-sm">
@@ -46,9 +36,9 @@ export default function ExercisesPage() {
         </div>
       ) : (
         <ul className="space-y-3">
-          {rows.map((e) => (
+          {exercises.map((e, idx) => (
             <li
-              key={e.id}
+              key={e.id ?? `exercise-${idx}`}
               className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white p-4 sm:gap-4"
             >
               <div className="min-w-0">
@@ -68,9 +58,9 @@ export default function ExercisesPage() {
                   >
                     {e.source_type === "github_pr" ? "GitHub PR" : "手動登録"}
                   </span>
-                  <span>{e.created_at}</span>
-                  <span>提出 {e.submission_count}回</span>
-                  {e.model_comment_count > 0 && (
+                  <span>{formatDateTime(e.created_at)}</span>
+                  <span>提出 {e.submission_count ?? 0}回</span>
+                  {(e.model_comment_count ?? 0) > 0 && (
                     <span>模範コメント {e.model_comment_count}件</span>
                   )}
                 </div>

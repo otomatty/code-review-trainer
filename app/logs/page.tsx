@@ -1,18 +1,8 @@
 import Link from "next/link";
-import { getDb } from "@/lib/db";
+import { supabase } from "@/lib/supabase";
 import { calcStreak, studiedDates } from "@/lib/streak";
 
 export const dynamic = "force-dynamic";
-
-interface LogRow {
-  id: number;
-  studied_on: string;
-  memo: string | null;
-  submission_id: number | null;
-  title: string | null;
-  duration_min: number | null;
-  self_score: number | null;
-}
 
 function buildMonth(year: number, month: number, studied: Set<string>) {
   // month: 0-11
@@ -29,22 +19,22 @@ function buildMonth(year: number, month: number, studied: Set<string>) {
   return cells;
 }
 
-export default function LogsPage() {
-  const db = getDb();
-  const streak = calcStreak();
-  const studied = new Set(studiedDates());
-
-  const logs = db
-    .prepare(
-      `SELECT l.id, l.studied_on, l.memo, l.submission_id,
-              e.title, s.duration_min, s.self_score
-       FROM study_logs l
-       LEFT JOIN exercises e ON e.id = l.exercise_id
-       LEFT JOIN review_submissions s ON s.id = l.submission_id
-       ORDER BY l.studied_on DESC, l.id DESC
-       LIMIT 100`
-    )
-    .all() as LogRow[];
+export default async function LogsPage() {
+  const [streak, studiedList, { data: logRows, error }] = await Promise.all([
+    calcStreak(),
+    studiedDates(),
+    supabase
+      .from("study_log_view")
+      .select("id, studied_on, memo, submission_id, title, duration_min, self_score")
+      .order("studied_on", { ascending: false })
+      .order("id", { ascending: false })
+      .limit(100),
+  ]);
+  if (error) {
+    throw new Error(`学習ログの取得に失敗しました: ${error.message}`);
+  }
+  const studied = new Set(studiedList);
+  const logs = logRows ?? [];
 
   const now = new Date();
   const months: { year: number; month: number }[] = [];

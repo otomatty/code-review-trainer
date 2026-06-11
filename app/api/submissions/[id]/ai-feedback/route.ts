@@ -1,43 +1,67 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getDb } from "@/lib/db";
+import { supabase } from "@/lib/supabase";
 import { generateAiFeedback } from "@/lib/ai";
+import { parseId } from "@/lib/types";
 
 export async function POST(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const db = getDb();
+  const submissionId = parseId(id);
+  if (submissionId === null) {
+    return NextResponse.json({ error: "IDが不正です" }, { status: 400 });
+  }
 
-  const submission = db
-    .prepare("SELECT * FROM review_submissions WHERE id = ?")
-    .get(id) as { id: number; exercise_id: number } | undefined;
+  const { data: submission, error: submissionError } = await supabase
+    .from("review_submissions")
+    .select("id, exercise_id")
+    .eq("id", submissionId)
+    .maybeSingle();
+  if (submissionError) {
+    return NextResponse.json({ error: submissionError.message }, { status: 500 });
+  }
   if (!submission) {
     return NextResponse.json({ error: "提出が見つかりません" }, { status: 404 });
   }
 
-  const exercise = db
-    .prepare("SELECT diff_content FROM exercises WHERE id = ?")
-    .get(submission.exercise_id) as { diff_content: string };
+  const { data: exercise, error: exerciseError } = await supabase
+    .from("exercises")
+    .select("diff_content")
+    .eq("id", submission.exercise_id)
+    .single();
+  if (exerciseError || !exercise) {
+    return NextResponse.json(
+      { error: exerciseError?.message ?? "演習データが見つかりません" },
+      { status: 500 }
+    );
+  }
 
-  const comments = db
-    .prepare(
-      `SELECT rc.file_path, rc.line_no, rc.body, ci.category
-       FROM review_comments rc
-       LEFT JOIN checklist_items ci ON ci.id = rc.checklist_item_id
-       WHERE rc.submission_id = ?`
-    )
-    .all(id) as { file_path: string; line_no: number; body: string; category: string | null }[];
+  const { data: comments, error: commentsError } = await supabase
+    .from("review_comment_view")
+    .select("file_path, line_no, body, category")
+    .eq("submission_id", submissionId);
+  if (commentsError) {
+    return NextResponse.json({ error: commentsError.message }, { status: 500 });
+  }
 
   try {
     const feedback = await generateAiFeedback({
       diff: exercise.diff_content,
-      userComments: comments,
+      userComments: (comments ?? []).map((c) => ({
+        file_path: c.file_path ?? "",
+        line_no: c.line_no ?? 0,
+        body: c.body ?? "",
+        category: c.category,
+      })),
     });
 
-    db.prepare(
-      "INSERT INTO ai_feedback (submission_id, scores_by_category, commentary) VALUES (?, ?, ?)"
-    ).run(id, JSON.stringify(feedback.scores), feedback.commentary);
+    const { error } = await supabase.from("ai_feedback").insert({
+      submission_id: submissionId,
+      scores_by_category: feedback.scores,
+      commentary: feedback.commentary,
+    });
+    if (error) throw new Error(error.message);
 
     return NextResponse.json(feedback);
   } catch (e) {

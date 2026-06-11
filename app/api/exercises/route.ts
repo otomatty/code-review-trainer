@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getDb } from "@/lib/db";
+import { supabase } from "@/lib/supabase";
+import type { Json } from "@/lib/database.types";
 import {
   parsePrUrl,
   fetchPrMeta,
@@ -8,24 +9,18 @@ import {
 } from "@/lib/github";
 
 export async function GET() {
-  const db = getDb();
-  const rows = db
-    .prepare(
-      `SELECT e.id, e.title, e.source_type, e.pr_url, e.created_at,
-              COUNT(s.id) AS submission_count,
-              MAX(s.submitted_at) AS last_submitted_at
-       FROM exercises e
-       LEFT JOIN review_submissions s ON s.exercise_id = e.id
-       GROUP BY e.id
-       ORDER BY e.created_at DESC`
-    )
-    .all();
-  return NextResponse.json(rows);
+  const { data, error } = await supabase
+    .from("exercise_list_view")
+    .select("id, title, source_type, pr_url, created_at, submission_count, last_submitted_at")
+    .order("created_at", { ascending: false });
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+  return NextResponse.json(data);
 }
 
 export async function POST(req: NextRequest) {
   const body = await req.json();
-  const db = getDb();
 
   try {
     if (body.source_type === "github_pr") {
@@ -43,26 +38,14 @@ export async function POST(req: NextRequest) {
         fetchPrReviewComments(ref),
       ]);
 
-      const result = db
-        .prepare(
-          "INSERT INTO exercises (title, source_type, pr_url, diff_content) VALUES (?, 'github_pr', ?, ?)"
-        )
-        .run(
-          body.title?.trim() || `${ref.owner}/${ref.repo}#${ref.number} ${meta.title}`,
-          body.pr_url.trim(),
-          diff
-        );
-      const exerciseId = result.lastInsertRowid as number;
-
-      const insertModel = db.prepare(
-        "INSERT INTO model_review_comments (exercise_id, author, file_path, line_no, body) VALUES (?, ?, ?, ?, ?)"
-      );
-      const tx = db.transaction(() => {
-        for (const c of modelComments) {
-          insertModel.run(exerciseId, c.author, c.file_path, c.line_no, c.body);
-        }
+      // 演習 + 模範レビューコメントを 1 トランザクションで登録する (RPC)
+      const { data: exerciseId, error } = await supabase.rpc("create_github_exercise", {
+        p_title: body.title?.trim() || `${ref.owner}/${ref.repo}#${ref.number} ${meta.title}`,
+        p_pr_url: body.pr_url.trim(),
+        p_diff: diff,
+        p_model_comments: modelComments as unknown as Json,
       });
-      tx();
+      if (error) throw new Error(error.message);
 
       return NextResponse.json({ id: exerciseId, model_comment_count: modelComments.length });
     }
@@ -76,12 +59,13 @@ export async function POST(req: NextRequest) {
         { status: 400 }
       );
     }
-    const result = db
-      .prepare(
-        "INSERT INTO exercises (title, source_type, pr_url, diff_content) VALUES (?, 'manual', NULL, ?)"
-      )
-      .run(title, diff);
-    return NextResponse.json({ id: result.lastInsertRowid });
+    const { data, error } = await supabase
+      .from("exercises")
+      .insert({ title, source_type: "manual", pr_url: null, diff_content: diff })
+      .select("id")
+      .single();
+    if (error) throw new Error(error.message);
+    return NextResponse.json({ id: data.id });
   } catch (e) {
     return NextResponse.json(
       { error: e instanceof Error ? e.message : "登録に失敗しました" },

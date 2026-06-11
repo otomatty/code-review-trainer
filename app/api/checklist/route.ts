@@ -1,11 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getDb } from "@/lib/db";
+import { supabase } from "@/lib/supabase";
 
 export async function GET() {
-  const rows = getDb()
-    .prepare("SELECT * FROM checklist_items ORDER BY category, id")
-    .all();
-  return NextResponse.json(rows);
+  const { data, error } = await supabase
+    .from("checklist_items")
+    .select("*")
+    .order("category")
+    .order("id");
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+  return NextResponse.json(data);
 }
 
 export async function POST(req: NextRequest) {
@@ -15,8 +20,13 @@ export async function POST(req: NextRequest) {
   if (!category || !label) {
     return NextResponse.json({ error: "カテゴリとラベルは必須です" }, { status: 400 });
   }
-  const result = getDb()
-    .prepare("INSERT INTO checklist_items (category, label, active) VALUES (?, ?, 1)")
-    .run(category, label);
-  return NextResponse.json({ id: result.lastInsertRowid });
+  const { data, error } = await supabase
+    .from("checklist_items")
+    .insert({ category, label, active: true })
+    .select("id")
+    .single();
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+  return NextResponse.json({ id: data.id });
 }

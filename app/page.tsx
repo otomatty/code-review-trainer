@@ -1,65 +1,56 @@
 import Link from "next/link";
-import { getDb } from "@/lib/db";
+import { supabase } from "@/lib/supabase";
 import { calcStreak } from "@/lib/streak";
-import { categoryLabel, CHECKLIST_CATEGORIES } from "@/lib/types";
+import { categoryLabel, CHECKLIST_CATEGORIES, formatDateTime, AiScore } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
-interface RecentSubmission {
-  id: number;
-  submitted_at: string;
-  duration_min: number | null;
-  self_score: number | null;
-  title: string;
-  comment_count: number;
-}
+export default async function DashboardPage() {
+  const [
+    streak,
+    { count: totalSubmissions, error: submissionsError },
+    { count: totalExercises, error: exercisesError },
+    { data: weekly, error: weeklyError },
+    { data: recent, error: recentError },
+    { data: feedbackRows, error: feedbackError },
+  ] = await Promise.all([
+    calcStreak(),
+    supabase.from("review_submissions").select("*", { count: "exact", head: true }),
+    supabase.from("exercises").select("*", { count: "exact", head: true }),
+    supabase.from("weekly_study_days_view").select("days").maybeSingle(),
+    supabase
+      .from("recent_submission_view")
+      .select("id, submitted_at, duration_min, self_score, title, comment_count")
+      .order("submitted_at", { ascending: false })
+      .limit(5),
+    supabase.from("ai_feedback").select("scores_by_category"),
+  ]);
 
-export default function DashboardPage() {
-  const db = getDb();
-  const streak = calcStreak();
+  const dashboardError =
+    submissionsError ?? exercisesError ?? weeklyError ?? recentError ?? feedbackError;
+  if (dashboardError) {
+    throw new Error(`ダッシュボードの取得に失敗しました: ${dashboardError.message}`);
+  }
 
-  const totalSubmissions = (
-    db.prepare("SELECT COUNT(*) AS c FROM review_submissions").get() as { c: number }
-  ).c;
-  const totalExercises = (
-    db.prepare("SELECT COUNT(*) AS c FROM exercises").get() as { c: number }
-  ).c;
-  const thisWeek = (
-    db
-      .prepare(
-        "SELECT COUNT(DISTINCT studied_on) AS c FROM study_logs WHERE studied_on >= date('now', '-6 days')"
-      )
-      .get() as { c: number }
-  ).c;
-
-  const recent = db
-    .prepare(
-      `SELECT s.id, s.submitted_at, s.duration_min, s.self_score, e.title,
-              (SELECT COUNT(*) FROM review_comments rc WHERE rc.submission_id = s.id) AS comment_count
-       FROM review_submissions s
-       JOIN exercises e ON e.id = s.exercise_id
-       ORDER BY s.submitted_at DESC
-       LIMIT 5`
-    )
-    .all() as RecentSubmission[];
+  const thisWeek = weekly?.days ?? 0;
+  const recentList = recent ?? [];
 
   // 弱点サマリ: AIフィードバックの観点別平均スコア (F-08 簡易版)
-  const feedbackRows = db
-    .prepare("SELECT scores_by_category FROM ai_feedback")
-    .all() as { scores_by_category: string }[];
+  // jsonb は型保証がないため、各要素の構造を実行時に検証してから集計する。
+  const isAiScore = (v: unknown): v is AiScore =>
+    typeof v === "object" &&
+    v !== null &&
+    typeof (v as AiScore).category === "string" &&
+    typeof (v as AiScore).score === "number";
+
   const categoryScores = new Map<string, number[]>();
-  for (const row of feedbackRows) {
-    try {
-      const scores = JSON.parse(row.scores_by_category) as {
-        category: string;
-        score: number;
-      }[];
-      for (const s of scores) {
-        if (!categoryScores.has(s.category)) categoryScores.set(s.category, []);
-        categoryScores.get(s.category)!.push(s.score);
-      }
-    } catch {
-      // 不正なJSONは無視
+  for (const row of feedbackRows ?? []) {
+    const scores = row.scores_by_category;
+    if (!Array.isArray(scores)) continue;
+    for (const s of scores) {
+      if (!isAiScore(s)) continue;
+      if (!categoryScores.has(s.category)) categoryScores.set(s.category, []);
+      categoryScores.get(s.category)!.push(s.score);
     }
   }
   const weakness = CHECKLIST_CATEGORIES.map((c) => {
@@ -83,14 +74,14 @@ export default function DashboardPage() {
       <section className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-4">
         <StatCard label="🔥 ストリーク" value={`${streak}日`} highlight={streak >= 3} />
         <StatCard label="今週の学習日数" value={`${thisWeek} / 7日`} highlight={thisWeek >= 3} />
-        <StatCard label="演習提出回数" value={`${totalSubmissions}回`} />
-        <StatCard label="登録題材数" value={`${totalExercises}件`} />
+        <StatCard label="演習提出回数" value={`${totalSubmissions ?? 0}回`} />
+        <StatCard label="登録題材数" value={`${totalExercises ?? 0}件`} />
       </section>
 
       <section className="grid gap-6 lg:grid-cols-2">
         <div className="rounded-xl border border-slate-200 bg-white p-5">
           <h2 className="mb-3 font-semibold">直近の演習</h2>
-          {recent.length === 0 ? (
+          {recentList.length === 0 ? (
             <p className="text-sm text-slate-500">
               まだ演習がありません。
               <Link href="/exercises" className="text-blue-600 underline">
@@ -100,14 +91,14 @@ export default function DashboardPage() {
             </p>
           ) : (
             <ul className="divide-y divide-slate-100">
-              {recent.map((s) => (
+              {recentList.map((s) => (
                 <li key={s.id} className="py-2.5">
                   <Link href={`/results/${s.id}`} className="group block">
                     <div className="font-medium text-slate-800 group-hover:text-blue-600">
                       {s.title}
                     </div>
                     <div className="mt-0.5 text-xs text-slate-500">
-                      {s.submitted_at} ・ 指摘 {s.comment_count}件
+                      {formatDateTime(s.submitted_at)} ・ 指摘 {s.comment_count ?? 0}件
                       {s.duration_min != null && ` ・ ${s.duration_min}分`}
                       {s.self_score != null && ` ・ 自己評価 ${s.self_score}/5`}
                     </div>
@@ -120,7 +111,7 @@ export default function DashboardPage() {
 
         <div className="rounded-xl border border-slate-200 bg-white p-5">
           <h2 className="mb-3 font-semibold">弱点サマリ (AI採点の観点別平均)</h2>
-          {feedbackRows.length === 0 ? (
+          {(feedbackRows ?? []).length === 0 ? (
             <p className="text-sm text-slate-500">
               AIフィードバックを実行すると、観点別の弱点がここに表示されます。
             </p>
