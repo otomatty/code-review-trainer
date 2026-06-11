@@ -1,18 +1,27 @@
-import { getDb } from "./db";
+import { supabase } from "./supabase";
 
 function toDateStr(d: Date): string {
   return d.toISOString().slice(0, 10);
 }
 
-/** study_logs から連続学習日数を計算する (今日または昨日を起点に遡る) */
-export function calcStreak(): number {
-  const db = getDb();
-  const rows = db
-    .prepare("SELECT DISTINCT studied_on FROM study_logs ORDER BY studied_on DESC")
-    .all() as { studied_on: string }[];
-  if (rows.length === 0) return 0;
+/** studied_dates_view (distinct studied_on) を取得する */
+async function fetchStudiedDates(): Promise<string[]> {
+  const { data, error } = await supabase
+    .from("studied_dates_view")
+    .select("studied_on")
+    .order("studied_on", { ascending: true });
+  if (error) throw new Error(error.message);
+  return (data ?? [])
+    .map((r) => r.studied_on)
+    .filter((d): d is string => d != null);
+}
 
-  const days = new Set(rows.map((r) => r.studied_on));
+/** study_logs から連続学習日数を計算する (今日または昨日を起点に遡る) */
+export async function calcStreak(): Promise<number> {
+  const dates = await fetchStudiedDates();
+  if (dates.length === 0) return 0;
+
+  const days = new Set(dates);
   const today = new Date();
   let cursor: Date;
 
@@ -35,10 +44,6 @@ export function calcStreak(): number {
   return streak;
 }
 
-export function studiedDates(): string[] {
-  const db = getDb();
-  const rows = db
-    .prepare("SELECT DISTINCT studied_on FROM study_logs ORDER BY studied_on")
-    .all() as { studied_on: string }[];
-  return rows.map((r) => r.studied_on);
+export async function studiedDates(): Promise<string[]> {
+  return fetchStudiedDates();
 }

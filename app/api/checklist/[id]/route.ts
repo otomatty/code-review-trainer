@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getDb } from "@/lib/db";
+import { supabase } from "@/lib/supabase";
 
 export async function PATCH(
   req: NextRequest,
@@ -7,19 +7,23 @@ export async function PATCH(
 ) {
   const { id } = await params;
   const body = await req.json();
-  const db = getDb();
 
+  const patch: { active?: boolean; label?: string } = {};
   if (typeof body.active === "boolean" || typeof body.active === "number") {
-    db.prepare("UPDATE checklist_items SET active = ? WHERE id = ?").run(
-      body.active ? 1 : 0,
-      id
-    );
+    patch.active = !!body.active;
   }
   if (typeof body.label === "string" && body.label.trim()) {
-    db.prepare("UPDATE checklist_items SET label = ? WHERE id = ?").run(
-      body.label.trim(),
-      id
-    );
+    patch.label = body.label.trim();
+  }
+
+  if (Object.keys(patch).length > 0) {
+    const { error } = await supabase
+      .from("checklist_items")
+      .update(patch)
+      .eq("id", Number(id));
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
   }
   return NextResponse.json({ ok: true });
 }
@@ -29,6 +33,9 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  getDb().prepare("DELETE FROM checklist_items WHERE id = ?").run(id);
+  const { error } = await supabase.from("checklist_items").delete().eq("id", Number(id));
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
   return NextResponse.json({ ok: true });
 }

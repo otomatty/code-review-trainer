@@ -36,7 +36,8 @@ export async function generateAiFeedback(input: {
   diff: string;
   userComments: { file_path: string; line_no: number; category: string | null; body: string }[];
 }): Promise<AiReviewScores> {
-  const apiKey = getSetting("anthropic_api_key") || process.env.ANTHROPIC_API_KEY;
+  const apiKey =
+    (await getSetting("anthropic_api_key")) || process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
     throw new Error(
       "Anthropic APIキーが設定されていません。設定画面または環境変数 ANTHROPIC_API_KEY で設定してください。"

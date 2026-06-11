@@ -21,6 +21,7 @@
 
 ```bash
 npm install
+cp .env.example .env.local   # Supabase の接続情報を記入
 npm run dev
 ```
 
@@ -35,7 +36,23 @@ npm start
 
 ## 設定
 
-設定画面 (`/settings`) または環境変数でトークンを登録できます。
+### Supabase 接続 (必須)
+
+DB は Supabase (Postgres) を使用します。Supabase ダッシュボードの
+**Project Settings > API** から取得した値を環境変数に設定してください。
+
+| 環境変数 | 用途 |
+|---|---|
+| `NEXT_PUBLIC_SUPABASE_URL` | プロジェクト URL (例: `https://xxxx.supabase.co`) |
+| `SUPABASE_SERVICE_ROLE_KEY` | service_role シークレットキー。**サーバー側専用・公開厳禁** |
+
+> 認証なしの個人ツールのため、DB アクセスはすべてサーバー側 (API Routes / Server Components) に限定し、
+> RLS をバイパスできる service_role キーで接続しています。全テーブルで RLS を有効化し、
+> ポリシーを作らないことで anon キー経由のアクセスを完全に遮断しています。
+
+### APIトークン (任意)
+
+設定画面 (`/settings`) または環境変数で登録できます。
 
 | 項目 | 環境変数 | 用途 |
 |---|---|---|
@@ -53,12 +70,26 @@ npm start
 ## 技術構成
 
 - **フレームワーク**: Next.js (App Router) + TypeScript + Tailwind CSS
-- **DB**: SQLite (better-sqlite3) — `data/app.db` に自動作成 (gitignore済み)
+- **DB**: Supabase (Postgres) — `@supabase/supabase-js` でサーバー側から接続
 - **外部連携**: GitHub REST API / Anthropic Claude API (構造化出力)
+
+### DB スキーマ
+
+スキーマは Supabase のマイグレーションで管理しています。主な構成は以下のとおりです。
+
+- **テーブル**: `exercises` / `review_submissions` / `review_comments` / `checklist_items` /
+  `model_review_comments` / `ai_feedback` / `study_logs` / `settings` / `bookmarks`
+- **VIEW** (`security_invoker`): 集計・JOIN を切り出した `exercise_list_view` /
+  `recent_submission_view` / `review_comment_view` / `study_log_view` /
+  `studied_dates_view` / `weekly_study_days_view`
+- **関数** (RPC): 複数テーブルへの書き込みを 1 トランザクションで行う
+  `submit_review` (提出) / `create_github_exercise` (PR取込)
+
+`lib/database.types.ts` は Supabase から自動生成した型定義です。スキーマ変更時は再生成してください。
 
 ### データのバックアップ
 
-DBはファイル1つなので `data/app.db` をコピーするだけでバックアップできます。
+Supabase ダッシュボードの自動バックアップ、または `pg_dump` でエクスポートできます。
 
 ## ディレクトリ構成
 
@@ -71,10 +102,12 @@ app/              # 画面 + API Routes
   bookmarks/      # PRブックマーク (F-07)
   settings/       # 設定 (S-06)
 lib/
-  db.ts           # SQLiteスキーマ・シード・設定ストア
-  diff.ts         # unified diffパーサー
-  github.ts       # GitHub API連携 (PR差分・レビューコメント取得)
-  ai.ts           # Claude APIによる採点 (構造化出力)
-  streak.ts       # ストリーク計算
-  types.ts        # 共有型・観点カテゴリ定義
+  supabase.ts          # Supabase クライアント (server-only, service_role)
+  database.types.ts    # Supabase 自動生成の型定義
+  db.ts                # 設定ストア (settings テーブル)
+  diff.ts              # unified diffパーサー
+  github.ts            # GitHub API連携 (PR差分・レビューコメント取得)
+  ai.ts                # Claude APIによる採点 (構造化出力)
+  streak.ts            # ストリーク計算
+  types.ts             # 共有型・観点カテゴリ定義
 ```

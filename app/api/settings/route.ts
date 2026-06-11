@@ -8,9 +8,13 @@ function mask(value: string | null): string | null {
 }
 
 export async function GET() {
+  const [githubToken, anthropicKey] = await Promise.all([
+    getSetting("github_token"),
+    getSetting("anthropic_api_key"),
+  ]);
   return NextResponse.json({
-    github_token: mask(getSetting("github_token")),
-    anthropic_api_key: mask(getSetting("anthropic_api_key")),
+    github_token: mask(githubToken),
+    anthropic_api_key: mask(anthropicKey),
     github_token_env: !!process.env.GITHUB_TOKEN,
     anthropic_api_key_env: !!process.env.ANTHROPIC_API_KEY,
   });
@@ -22,9 +26,9 @@ export async function PUT(req: NextRequest) {
     if (typeof body[key] === "string") {
       const v = body[key].trim();
       if (v === "") {
-        deleteSetting(key);
+        await deleteSetting(key);
       } else {
-        setSetting(key, v);
+        await setSetting(key, v);
       }
     }
   }

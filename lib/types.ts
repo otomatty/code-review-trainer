@@ -30,7 +30,7 @@ export interface ChecklistItem {
   id: number;
   category: string;
   label: string;
-  active: number; // SQLite boolean (0/1)
+  active: boolean;
 }
 
 export interface ModelReviewComment {
@@ -42,10 +42,16 @@ export interface ModelReviewComment {
   body: string;
 }
 
+export interface AiScore {
+  category: string;
+  score: number;
+  missed_points: string[];
+}
+
 export interface AiFeedback {
   id: number;
   submission_id: number;
-  scores_by_category: string; // JSON string
+  scores_by_category: AiScore[]; // jsonb (Postgres でパース済みオブジェクト)
   commentary: string;
   created_at: string;
 }
@@ -62,7 +68,7 @@ export interface Bookmark {
   id: number;
   pr_url: string;
   title: string;
-  is_read: number; // 0/1
+  is_read: boolean;
   created_at: string;
   read_at: string | null;
 }
@@ -78,4 +84,13 @@ export const CHECKLIST_CATEGORIES = [
 
 export function categoryLabel(key: string): string {
   return CHECKLIST_CATEGORIES.find((c) => c.key === key)?.label ?? key;
+}
+
+/** Postgres の timestamptz (ISO文字列) を "YYYY-MM-DD HH:MM" 形式に整形する */
+export function formatDateTime(iso: string | null | undefined): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }

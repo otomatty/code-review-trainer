@@ -14,19 +14,19 @@ export function parsePrUrl(url: string): PrRef | null {
   return { owner: m[1], repo: m[2], number: parseInt(m[3], 10) };
 }
 
-function githubHeaders(accept: string): HeadersInit {
+async function githubHeaders(accept: string): Promise<HeadersInit> {
   const headers: Record<string, string> = {
     Accept: accept,
     "X-GitHub-Api-Version": "2022-11-28",
     "User-Agent": "code-review-trainer",
   };
-  const token = getSetting("github_token") || process.env.GITHUB_TOKEN;
+  const token = (await getSetting("github_token")) || process.env.GITHUB_TOKEN;
   if (token) headers.Authorization = `Bearer ${token}`;
   return headers;
 }
 
 async function ghFetch(url: string, accept: string): Promise<Response> {
-  const res = await fetch(url, { headers: githubHeaders(accept) });
+  const res = await fetch(url, { headers: await githubHeaders(accept) });
   if (!res.ok) {
     const body = await res.text().catch(() => "");
     throw new Error(

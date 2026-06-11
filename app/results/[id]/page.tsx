@@ -4,6 +4,8 @@ import { use, useEffect, useState } from "react";
 import Link from "next/link";
 import {
   categoryLabel,
+  formatDateTime,
+  AiScore,
   Exercise,
   ModelReviewComment,
   ReviewSubmission,
@@ -18,14 +20,8 @@ interface OwnComment {
   checklist_label: string | null;
 }
 
-interface AiScore {
-  category: string;
-  score: number;
-  missed_points: string[];
-}
-
 interface AiFeedbackRow {
-  scores_by_category: string;
+  scores_by_category: AiScore[];
   commentary: string;
   created_at: string;
 }
@@ -88,9 +84,7 @@ export default function ResultsPage({
   }
 
   const { submission, exercise, comments, modelComments, aiFeedback } = data;
-  const aiScores: AiScore[] = aiFeedback
-    ? (JSON.parse(aiFeedback.scores_by_category) as AiScore[])
-    : [];
+  const aiScores: AiScore[] = aiFeedback?.scores_by_category ?? [];
 
   // 行単位の対比のため、ファイル+行でグルーピング
   const allKeys = new Set<string>();
@@ -104,7 +98,7 @@ export default function ResultsPage({
         <div>
           <h1 className="text-2xl font-bold">結果比較</h1>
           <p className="mt-1 text-sm text-slate-500">
-            {exercise.title} ・ {submission.submitted_at}
+            {exercise.title} ・ {formatDateTime(submission.submitted_at)}
             {submission.duration_min != null && ` ・ ${submission.duration_min}分`}
             {submission.self_score != null && ` ・ 自己評価 ${submission.self_score}/5`}
           </p>
