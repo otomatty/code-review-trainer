@@ -1,16 +1,28 @@
 import type { Metadata, Viewport } from "next";
 import Link from "next/link";
 import { MobileBottomNav, SidebarNav } from "./components/site-nav";
+import { ServiceWorkerRegister } from "./components/sw-register";
 import "./globals.css";
 
 export const metadata: Metadata = {
   title: "コードレビュー・トレーナー",
   description: "コードレビュー能力を鍛えるための個人用トレーニングアプリ",
+  applicationName: "コードレビュー・トレーナー",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "CR Trainer",
+  },
+  icons: {
+    apple: "/icons/apple-touch-icon.png",
+  },
 };
 
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
+  viewportFit: "cover",
+  themeColor: "#ffffff",
 };
 
 export default function RootLayout({
@@ -33,7 +45,7 @@ export default function RootLayout({
             </div>
           </aside>
           <div className="min-w-0 flex-1">
-            <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/90 px-4 py-3 backdrop-blur md:hidden">
+            <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/90 px-4 pt-[calc(0.75rem+env(safe-area-inset-top))] pb-3 backdrop-blur md:hidden">
               <Link href="/" className="text-base font-bold tracking-tight">
                 Code Review Trainer
               </Link>
@@ -44,6 +56,7 @@ export default function RootLayout({
           </div>
         </div>
         <MobileBottomNav />
+        <ServiceWorkerRegister />
       </body>
     </html>
   );
