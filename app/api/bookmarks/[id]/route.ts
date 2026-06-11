@@ -21,13 +21,17 @@ export async function PATCH(
         return NextResponse.json({ error: error.message }, { status: 500 });
       }
       // 読了も学習ログに記録 (読む習慣化)
+      // studied_on はアプリ全体で UTC 基準に統一している (submit_review の current_date / streak.ts と整合)
       const today = new Date().toISOString().slice(0, 10);
-      await supabase.from("study_logs").insert({
+      const { error: logError } = await supabase.from("study_logs").insert({
         exercise_id: null,
         submission_id: null,
         studied_on: today,
         memo: `PR読了: ${bm?.title ?? ""}`,
       });
+      if (logError) {
+        return NextResponse.json({ error: logError.message }, { status: 500 });
+      }
     } else {
       const { error } = await supabase
         .from("bookmarks")

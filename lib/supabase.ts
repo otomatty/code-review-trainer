@@ -36,8 +36,12 @@ function getClient(): SupabaseClient<Database> {
 // 初期化 (および環境変数チェック) を初回アクセスまで遅延させる。
 // これにより、環境変数が未設定でも `next build` のモジュール評価で落ちない。
 export const supabase = new Proxy({} as SupabaseClient<Database>, {
-  get(_target, prop, receiver) {
-    const value = Reflect.get(getClient(), prop, receiver);
-    return typeof value === "function" ? value.bind(getClient()) : value;
+  get(_target, prop) {
+    // receiver (= Proxy) を渡すと、SupabaseClient のゲッター/メソッド内で
+    // this が Proxy を指し、プライベートフィールドアクセスで TypeError になる。
+    // 必ず実インスタンスを receiver として解決し、メソッドも実インスタンスに束縛する。
+    const client = getClient();
+    const value = Reflect.get(client, prop);
+    return typeof value === "function" ? value.bind(client) : value;
   },
 });

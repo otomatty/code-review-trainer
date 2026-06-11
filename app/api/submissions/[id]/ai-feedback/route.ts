@@ -18,20 +18,29 @@ export async function POST(
     return NextResponse.json({ error: "提出が見つかりません" }, { status: 404 });
   }
 
-  const { data: exercise } = await supabase
+  const { data: exercise, error: exerciseError } = await supabase
     .from("exercises")
     .select("diff_content")
     .eq("id", submission.exercise_id)
     .single();
+  if (exerciseError || !exercise) {
+    return NextResponse.json(
+      { error: exerciseError?.message ?? "演習データが見つかりません" },
+      { status: 500 }
+    );
+  }
 
-  const { data: comments } = await supabase
+  const { data: comments, error: commentsError } = await supabase
     .from("review_comment_view")
     .select("file_path, line_no, body, category")
     .eq("submission_id", submissionId);
+  if (commentsError) {
+    return NextResponse.json({ error: commentsError.message }, { status: 500 });
+  }
 
   try {
     const feedback = await generateAiFeedback({
-      diff: exercise!.diff_content,
+      diff: exercise.diff_content,
       userComments: (comments ?? []).map((c) => ({
         file_path: c.file_path ?? "",
         line_no: c.line_no ?? 0,
